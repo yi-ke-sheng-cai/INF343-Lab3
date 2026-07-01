@@ -1,0 +1,22 @@
+# MV2: Gateway de Pedidos + Cliente Hambriento 1 + Datanode 1. network_mode host.
+services:
+  dn1:
+    build: { context: ., args: { ENTIDAD: datanode } }
+    network_mode: host
+    command: ["-id", "DN1", "-puerto", "${DN1_PUERTO}",
+              "-peers", "DN2@${IP_MV3}:${DN2_PUERTO},DN3@${IP_MV4}:${DN3_PUERTO}",
+              "-gossip-min", "${DN_GOSSIP_MIN}", "-gossip-max", "${DN_GOSSIP_MAX}",
+              "-final-log", "/resultados/estado_final_DN1.log"]
+    volumes: ["./resultados:/resultados"]
+
+  gateway:
+    build: { context: ., args: { ENTIDAD: gateway } }
+    network_mode: host
+    command: ["-puerto", "${GW_PUERTO}", "-broker", "${IP_MV1}:${BROKER_PUERTO}",
+              "-nodos", "DN1@${IP_MV2}:${DN1_PUERTO},DN2@${IP_MV3}:${DN2_PUERTO},DN3@${IP_MV4}:${DN3_PUERTO}",
+              "-ttl", "${GW_TTL}"]
+
+  client1:
+    build: { context: ., args: { ENTIDAD: client } }
+    network_mode: host
+    command: ["-id", "1", "-gateway", "${IP_MV2}:${GW_PUERTO}", "-pedidos", "${CLI_PEDIDOS}", "-delay-inicial", "${CLI_DELAY}"]

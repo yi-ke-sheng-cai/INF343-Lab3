@@ -1,0 +1,15 @@
+# MV4: Cliente Hambriento 3 + Datanode 3. network_mode host.
+services:
+  dn3:
+    build: { context: ., args: { ENTIDAD: datanode } }
+    network_mode: host
+    command: ["-id", "DN3", "-puerto", "${DN3_PUERTO}",
+              "-peers", "DN1@${IP_MV2}:${DN1_PUERTO},DN2@${IP_MV3}:${DN2_PUERTO}",
+              "-gossip-min", "${DN_GOSSIP_MIN}", "-gossip-max", "${DN_GOSSIP_MAX}",
+              "-final-log", "/resultados/estado_final_DN3.log"]
+    volumes: ["./resultados:/resultados"]
+
+  client3:
+    build: { context: ., args: { ENTIDAD: client } }
+    network_mode: host
+    command: ["-id", "3", "-gateway", "${IP_MV2}:${GW_PUERTO}", "-pedidos", "${CLI_PEDIDOS}", "-delay-inicial", "${CLI_DELAY}"]

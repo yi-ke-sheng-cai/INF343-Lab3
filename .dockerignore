@@ -1,0 +1,7 @@
+bin/
+resultados/
+*.log
+Reporte.txt
+estado_final_*.log
+*.pdf
+scratchpad/

@@ -1,0 +1,75 @@
+// Command datanode arranca una réplica de almacenamiento de DistriEats:
+// storage en memoria, relojes vectoriales, resolución de conflictos y gossip.
+//
+// Configuración (flag > env var > default), nada hardcodeado:
+//
+//	-id        ID lógico del nodo (DN1/DN2/DN3)          env DN_ID
+//	-puerto    puerto gRPC de escucha                    env DN_PUERTO
+//	-peers     lista "DN2@host:port,DN3@host:port"       env DN_PEERS
+//	-gossip-min / -gossip-max  ventana de jitter gossip  env DN_GOSSIP_MIN/MAX
+//	-rpc-timeout  timeout de RPC saliente                env DN_RPC_TIMEOUT
+//	-req-ttl   TTL de request_id (idempotencia)          env DN_REQ_TTL
+//	-final-log ruta del volcado de estado final          env DN_FINAL_LOG
+package main
+
+import (
+	"flag"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	pb "distrieats/proto/pb"
+
+	"distrieats/internal/util"
+
+	"google.golang.org/grpc"
+)
+
+func main() {
+	id := flag.String("id", util.EnvOr("DN_ID", "DN1"), "ID lógico del Datanode")
+	puerto := flag.String("puerto", util.EnvOr("DN_PUERTO", "50061"), "puerto gRPC de escucha")
+	peers := flag.String("peers", util.EnvOr("DN_PEERS", ""), "peers 'DN2@host:port,DN3@host:port'")
+	gossipMin := flag.Duration("gossip-min", util.EnvDurationOr("DN_GOSSIP_MIN", 3*time.Second), "intervalo mínimo de gossip")
+	gossipMax := flag.Duration("gossip-max", util.EnvDurationOr("DN_GOSSIP_MAX", 7*time.Second), "intervalo máximo de gossip")
+	rpcTimeout := flag.Duration("rpc-timeout", util.EnvDurationOr("DN_RPC_TIMEOUT", 3*time.Second), "timeout de RPC saliente")
+	reqTTL := flag.Duration("req-ttl", util.EnvDurationOr("DN_REQ_TTL", 120*time.Second), "TTL de request_id procesados")
+	finalLog := flag.String("final-log", util.EnvOr("DN_FINAL_LOG", ""), "ruta del volcado de estado final")
+	flag.Parse()
+
+	dn := NewDatanode(*id, util.ParsePeers(*peers), *rpcTimeout, *reqTTL)
+
+	lis, err := net.Listen("tcp", ":"+*puerto)
+	if err != nil {
+		log.Fatalf("[DATANODE-%s] no pude escuchar en :%s: %v", *id, *puerto, err)
+	}
+
+	srv := grpc.NewServer()
+	pb.RegisterDatanodeServiceServer(srv, dn)
+
+	go dn.gossipLoop(*gossipMin, *gossipMax)
+	go dn.cleanupSeen()
+
+	// Volcado de estado final ante SIGINT/SIGTERM (docker stop / cierre Fase 5).
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+		path := *finalLog
+		if path == "" {
+			path = "estado_final_" + *id + ".log"
+		}
+		if err := dn.WriteFinalState(path); err != nil {
+			dn.log.Printf("error al volcar estado final: %v", err)
+		}
+		srv.GracefulStop()
+		os.Exit(0)
+	}()
+
+	dn.log.Printf("escuchando gRPC en :%s | peers=%d | gossip=[%s,%s]", *puerto, len(dn.peers), *gossipMin, *gossipMax)
+	if err := srv.Serve(lis); err != nil {
+		log.Fatalf("[DATANODE-%s] gRPC terminó: %v", *id, err)
+	}
+}

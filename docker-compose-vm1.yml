@@ -1,0 +1,17 @@
+# MV1: Broker Central + Productor de Eventos. network_mode host (4 VMs reales).
+# Las IPs de las otras VMs vienen de .env (IP_MV2..IP_MV4).
+services:
+  broker:
+    build: { context: ., args: { ENTIDAD: broker } }
+    network_mode: host
+    command: ["-puerto", "${BROKER_PUERTO}",
+              "-nodos", "DN1@${IP_MV2}:${DN1_PUERTO},DN2@${IP_MV3}:${DN2_PUERTO},DN3@${IP_MV4}:${DN3_PUERTO}",
+              "-gateway", "${IP_MV2}:${GW_PUERTO}", "-grace", "${BROKER_GRACE}",
+              "-reporte", "/resultados/Reporte.txt"]
+    volumes: ["./resultados:/resultados"]
+
+  producer:
+    build: { context: ., args: { ENTIDAD: producer } }
+    network_mode: host
+    command: ["-broker", "${IP_MV1}:${BROKER_PUERTO}", "-csv", "${PROD_CSV}",
+              "-min", "${PROD_MIN}", "-max", "${PROD_MAX}", "-delay-inicial", "${PROD_DELAY}"]

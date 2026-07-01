@@ -1,0 +1,5 @@
+bin/
+resultados/
+Reporte.txt
+estado_final_*.log
+*.log

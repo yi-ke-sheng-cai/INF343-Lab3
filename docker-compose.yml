@@ -1,0 +1,61 @@
+# docker-compose de DESARROLLO LOCAL: los 9 contenedores en una red bridge,
+# resolviéndose por nombre de servicio. Para la evaluación en 4 VMs usar los
+# docker-compose-vm{1..4}.yml. Salidas (Reporte.txt, estado_final_*) en ./resultados.
+services:
+  dn1:
+    build: { context: ., args: { ENTIDAD: datanode } }
+    command: ["-id", "DN1", "-puerto", "${DN1_PUERTO}", "-peers", "DN2@dn2:${DN2_PUERTO},DN3@dn3:${DN3_PUERTO}",
+              "-gossip-min", "${DN_GOSSIP_MIN}", "-gossip-max", "${DN_GOSSIP_MAX}",
+              "-final-log", "/resultados/estado_final_DN1.log"]
+    volumes: ["./resultados:/resultados"]
+
+  dn2:
+    build: { context: ., args: { ENTIDAD: datanode } }
+    command: ["-id", "DN2", "-puerto", "${DN2_PUERTO}", "-peers", "DN1@dn1:${DN1_PUERTO},DN3@dn3:${DN3_PUERTO}",
+              "-gossip-min", "${DN_GOSSIP_MIN}", "-gossip-max", "${DN_GOSSIP_MAX}",
+              "-final-log", "/resultados/estado_final_DN2.log"]
+    volumes: ["./resultados:/resultados"]
+
+  dn3:
+    build: { context: ., args: { ENTIDAD: datanode } }
+    command: ["-id", "DN3", "-puerto", "${DN3_PUERTO}", "-peers", "DN1@dn1:${DN1_PUERTO},DN2@dn2:${DN2_PUERTO}",
+              "-gossip-min", "${DN_GOSSIP_MIN}", "-gossip-max", "${DN_GOSSIP_MAX}",
+              "-final-log", "/resultados/estado_final_DN3.log"]
+    volumes: ["./resultados:/resultados"]
+
+  broker:
+    build: { context: ., args: { ENTIDAD: broker } }
+    command: ["-puerto", "${BROKER_PUERTO}",
+              "-nodos", "DN1@dn1:${DN1_PUERTO},DN2@dn2:${DN2_PUERTO},DN3@dn3:${DN3_PUERTO}",
+              "-gateway", "gateway:${GW_PUERTO}", "-grace", "${BROKER_GRACE}",
+              "-reporte", "/resultados/Reporte.txt"]
+    volumes: ["./resultados:/resultados"]
+    depends_on: [dn1, dn2, dn3]
+
+  gateway:
+    build: { context: ., args: { ENTIDAD: gateway } }
+    command: ["-puerto", "${GW_PUERTO}", "-broker", "broker:${BROKER_PUERTO}",
+              "-nodos", "DN1@dn1:${DN1_PUERTO},DN2@dn2:${DN2_PUERTO},DN3@dn3:${DN3_PUERTO}",
+              "-ttl", "${GW_TTL}"]
+    depends_on: [broker, dn1, dn2, dn3]
+
+  producer:
+    build: { context: ., args: { ENTIDAD: producer } }
+    command: ["-broker", "broker:${BROKER_PUERTO}", "-csv", "${PROD_CSV}",
+              "-min", "${PROD_MIN}", "-max", "${PROD_MAX}", "-delay-inicial", "${PROD_DELAY}"]
+    depends_on: [broker]
+
+  client1:
+    build: { context: ., args: { ENTIDAD: client } }
+    command: ["-id", "1", "-gateway", "gateway:${GW_PUERTO}", "-pedidos", "${CLI_PEDIDOS}", "-delay-inicial", "${CLI_DELAY}"]
+    depends_on: [gateway]
+
+  client2:
+    build: { context: ., args: { ENTIDAD: client } }
+    command: ["-id", "2", "-gateway", "gateway:${GW_PUERTO}", "-pedidos", "${CLI_PEDIDOS}", "-delay-inicial", "${CLI_DELAY}"]
+    depends_on: [gateway]
+
+  client3:
+    build: { context: ., args: { ENTIDAD: client } }
+    command: ["-id", "3", "-gateway", "gateway:${GW_PUERTO}", "-pedidos", "${CLI_PEDIDOS}", "-delay-inicial", "${CLI_DELAY}"]
+    depends_on: [gateway]
