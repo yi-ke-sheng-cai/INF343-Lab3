@@ -48,40 +48,58 @@ Contrato gRPC único: `proto/distrieats.proto` (generado en `proto/pb/`).
 
 ## Ejecución
 
-### Local (una máquina, red bridge Docker) — recomendado para probar
+### Local (una máquina, red bridge Docker)
 
 ```bash
 make up
 make down
 ```
 
-Las salidas quedan en `resultados/`: `Reporte.txt` y `estado_final_DN{1,2,3}.log`.
+Salidas en `resultados/`: `Reporte.txt` y `estado_final_DN{1,2,3}.log`.
 
 ### Evaluación en 4 VMs (network_mode host)
 
-1. Editar `.env` y poner las **IPs reales** de cada máquina (`IP_MV1..IP_MV4`) y,
-   si se desea, ajustar puertos/tiempos/CSV. **Nada está hardcodeado.**
-2. En cada VM ejecutar su target (copiando el repo a las 4):
+Las 4 VMs deben tener conectividad de red entre sí y el `.env` con las IPs reales.
+Ejecutar en el siguiente orden — **MV2 → MV3 → MV4 → MV1** (Datanodes primero, Broker al final).
 
+#### 1. Terminal MV2 (dist058 · 10.35.168.68) — DN1 + Gateway + Client1
 ```bash
-make docker-VM1
-make docker-VM2
-make docker-VM3
-make docker-VM4
+cd INF343-Lab3
+docker-compose -f docker-compose-vm2.yml up --build
 ```
 
-Orden sugerido de arranque: **VM2, VM3, VM4 (Datanodes) → VM1 (Broker/Productor)**.
+#### 2. Terminal MV3 (dist059 · 10.35.168.69) — DN2 + Client2
+```bash
+cd INF343-Lab3
+docker-compose -f docker-compose-vm3.yml up --build
+```
+
+#### 3. Terminal MV4 (dist060 · 10.35.168.70) — DN3 + Client3
+```bash
+cd INF343-Lab3
+docker-compose -f docker-compose-vm4.yml up --build
+```
+
+#### 4. Terminal MV1 (dist057 · 10.35.168.67) — Broker + Producer
+```bash
+cd INF343-Lab3
+mkdir -p resultados
+docker-compose -f docker-compose-vm1.yml build
+docker-compose -f docker-compose-vm1.yml up
+```
+
+> Una vez iniciado, el sistema ejecuta la simulación automáticamente: el Productor emite eventos del CSV, los Datanodes convergen por gossip, los Clientes validan RYW. Al terminar se genera `resultados/Reporte.txt` y los `estado_final_DN*.log`.
 
 ### Desarrollo sin Docker
 
 ```bash
-make proto       # regenerar gRPC (requiere protoc + plugins de Go)
-make build       # compilar bin/{datanode,broker,gateway,client,producer}
-make test        # tests unitarios de relojes vectoriales / conflictos
+make proto
+make build
+make test
 ```
 
-Toda la configuración es por **flags** (con fallback a **variables de entorno**);
-ver la cabecera de cada `cmd/*/main.go`. Ejemplo:
+Toda la configuración es por **flags** (con fallback a **variables de entorno**).
+Ejemplo:
 
 ```bash
 bin/datanode -id DN1 -puerto 50061 -peers DN2@host:50062,DN3@host:50063 \
