@@ -60,6 +60,24 @@ func (b *Broker) GenerarReporte() error {
 			b.log.Printf("Shutdown %s: OK", ns.peer.ID)
 		}
 	}
+
+	if b.gatewayAddr != "" {
+		b.log.Printf("Enviando señal de Shutdown al Gateway...")
+		gwConn, err := util.Dial(b.gatewayAddr)
+		if err != nil {
+			b.log.Printf("Shutdown Gateway: no pude conectar: %v", err)
+		} else {
+			ctx, cancel := util.CtxTimeout(b.dial)
+			_, err = pb.NewGatewayServiceClient(gwConn).Shutdown(ctx, &pb.PingRequest{})
+			cancel()
+			gwConn.Close()
+			if err != nil {
+				b.log.Printf("Shutdown Gateway: %v", err)
+			} else {
+				b.log.Printf("Shutdown Gateway: OK")
+			}
+		}
+	}
 	return nil
 }
 func (b *Broker) snapshotDesdeDatanode() []*pb.Order {

@@ -14,6 +14,7 @@ const (
 	GatewayService_CrearPedido_FullMethodName         = "/distrieats.GatewayService/CrearPedido"
 	GatewayService_ConsultarEstado_FullMethodName     = "/distrieats.GatewayService/ConsultarEstado"
 	GatewayService_ObtenerAuditoriaRYW_FullMethodName = "/distrieats.GatewayService/ObtenerAuditoriaRYW"
+	GatewayService_Shutdown_FullMethodName            = "/distrieats.GatewayService/Shutdown"
 )
 
 
@@ -21,6 +22,7 @@ type GatewayServiceClient interface {
 	CrearPedido(ctx context.Context, in *CrearPedidoRequest, opts ...grpc.CallOption) (*CrearPedidoResponse, error)
 	ConsultarEstado(ctx context.Context, in *ConsultarEstadoRequest, opts ...grpc.CallOption) (*ConsultarEstadoResponse, error)
 	ObtenerAuditoriaRYW(ctx context.Context, in *AuditoriaRYWRequest, opts ...grpc.CallOption) (*AuditoriaRYWResponse, error)
+	Shutdown(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
 type gatewayServiceClient struct {
@@ -61,11 +63,22 @@ func (c *gatewayServiceClient) ObtenerAuditoriaRYW(ctx context.Context, in *Audi
 	return out, nil
 }
 
+func (c *gatewayServiceClient) Shutdown(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PingResponse)
+	err := c.cc.Invoke(ctx, GatewayService_Shutdown_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 
 type GatewayServiceServer interface {
 	CrearPedido(context.Context, *CrearPedidoRequest) (*CrearPedidoResponse, error)
 	ConsultarEstado(context.Context, *ConsultarEstadoRequest) (*ConsultarEstadoResponse, error)
 	ObtenerAuditoriaRYW(context.Context, *AuditoriaRYWRequest) (*AuditoriaRYWResponse, error)
+	Shutdown(context.Context, *PingRequest) (*PingResponse, error)
 	mustEmbedUnimplementedGatewayServiceServer()
 }
 
@@ -78,6 +91,8 @@ func (UnimplementedGatewayServiceServer) ConsultarEstado(context.Context, *Consu
 	return nil, status.Error(codes.Unimplemented, "method ConsultarEstado not implemented")}
 func (UnimplementedGatewayServiceServer) ObtenerAuditoriaRYW(context.Context, *AuditoriaRYWRequest) (*AuditoriaRYWResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ObtenerAuditoriaRYW not implemented")}
+func (UnimplementedGatewayServiceServer) Shutdown(context.Context, *PingRequest) (*PingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Shutdown not implemented")}
 func (UnimplementedGatewayServiceServer) mustEmbedUnimplementedGatewayServiceServer() {}
 func (UnimplementedGatewayServiceServer) testEmbeddedByValue(){}
 
@@ -147,6 +162,24 @@ func _GatewayService_ObtenerAuditoriaRYW_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GatewayService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServiceServer).Shutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GatewayService_Shutdown_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServiceServer).Shutdown(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 
 var GatewayService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "distrieats.GatewayService",
@@ -163,6 +196,10 @@ var GatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ObtenerAuditoriaRYW",
 			Handler:    _GatewayService_ObtenerAuditoriaRYW_Handler,
+		},
+		{
+			MethodName: "Shutdown",
+			Handler:    _GatewayService_Shutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

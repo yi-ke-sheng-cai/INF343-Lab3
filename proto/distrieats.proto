@@ -108,6 +108,7 @@ service GatewayService {
   rpc CrearPedido(CrearPedidoRequest) returns (CrearPedidoResponse);
   rpc ConsultarEstado(ConsultarEstadoRequest) returns (ConsultarEstadoResponse);
   rpc ObtenerAuditoriaRYW(AuditoriaRYWRequest) returns (AuditoriaRYWResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }
 
 service BrokerService {

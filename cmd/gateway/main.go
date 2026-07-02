@@ -4,6 +4,9 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	pb "distrieats/proto/pb"
@@ -42,6 +45,20 @@ func main() {
 
 	go g.sessions.cleanup(*ttl)
 	go g.cleanupIdem()
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+
+		select {
+		case <-g.stop:
+			g.log.Printf("Shutdown completo, deteniendo servidor...")
+		case <-sig:
+			g.log.Printf("Señal recibida, deteniendo servidor...")
+		}
+		srv.GracefulStop()
+		os.Exit(0)
+	}()
 
 	g.log.Printf("escuchando gRPC en :%s | broker=%s | Datanodes=%d | TTL afinidad=%s", *puerto, *broker, len(datanodes), *ttl)
 	if err := srv.Serve(lis); err != nil {

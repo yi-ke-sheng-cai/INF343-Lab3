@@ -37,6 +37,8 @@ type Gateway struct {
 
 	rywMu sync.Mutex
 	ryw   map[string]*pb.RYWEntry
+
+	stop chan struct{}
 }
 
 func NewGateway(brokerAddr string, datanodes []util.Peer, ttl, idemTTL, dial time.Duration) (*Gateway, error) {
@@ -49,6 +51,7 @@ func NewGateway(brokerAddr string, datanodes []util.Peer, ttl, idemTTL, dial tim
 		idem:       make(map[string]*pb.CrearPedidoResponse),
 		idemTTL:    idemTTL,
 		ryw:        make(map[string]*pb.RYWEntry),
+		stop:       make(chan struct{}),
 	}
 
 	bc, err := util.Dial(brokerAddr)
@@ -171,6 +174,12 @@ func (g *Gateway) registrarRYW(clientID, orderID, dnID string) {
 	g.rywMu.Lock()
 	g.ryw[clientID+"|"+orderID] = &pb.RYWEntry{ClientId: clientID, OrderId: orderID, DatanodeId: dnID}
 	g.rywMu.Unlock()
+}
+
+func (g *Gateway) Shutdown(_ context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
+	g.log.Printf("Shutdown recibido, cerrando...")
+	close(g.stop)
+	return &pb.PingResponse{Alive: true, NodeId: "gateway"}, nil
 }
 
 func (g *Gateway) cleanupIdem() {
