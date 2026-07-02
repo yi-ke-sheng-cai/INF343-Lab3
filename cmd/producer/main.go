@@ -1,16 +1,3 @@
-// Command producer es el emisor de eventos logísticos (Restaurante/Repartidor):
-// lee pedidos.csv y va enviando cada transición de estado al Broker, que la
-// enruta a los Datanodes. Los eventos que comparten tiempo_relativo se emiten
-// en ráfaga (concurrentes) para ejercitar la resolución de conflictos; entre
-// grupos de tiempo distinto espera un intervalo aleatorio configurable.
-//
-// Configuración (flag > env var > default):
-//
-//	-broker      dirección del Broker                     env PROD_BROKER
-//	-csv         ruta del pedidos.csv                     env PROD_CSV
-//	-min / -max  espera aleatoria entre grupos de eventos env PROD_MIN/PROD_MAX
-//	-delay-inicial  espera antes de arrancar              env PROD_DELAY
-//	-rpc-timeout timeout de RPC                            env PROD_RPC_TIMEOUT
 package main
 
 import (
@@ -56,7 +43,6 @@ func main() {
 	emitidos := 0
 	prevT := -1
 	for _, ev := range eventos {
-		// Nuevo grupo temporal: esperar un intervalo aleatorio antes de emitirlo.
 		if ev.T != prevT && prevT != -1 {
 			wait := *minWait
 			if *maxWait > *minWait {

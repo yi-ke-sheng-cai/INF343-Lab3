@@ -10,11 +10,9 @@ import (
 	"distrieats/internal/vclock"
 )
 
-// gossipLoop corre en background: cada intervalo (jitter entre min y max) elige
-// un peer vivo al azar y se sincroniza con él. Tolera peers caídos sin crashear.
+
 func (d *Datanode) gossipLoop(min, max time.Duration) {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano() + int64(len(d.id))))
-	// Arranque: gossip inmediato para pedir estado histórico (recuperación).
 	d.gossipOnce(rnd)
 	for {
 		wait := min
@@ -26,8 +24,7 @@ func (d *Datanode) gossipLoop(min, max time.Duration) {
 	}
 }
 
-// gossipOnce ejecuta un ciclo: escoge un peer aleatorio, le envía el snapshot
-// local y fusiona lo que devuelve.
+
 func (d *Datanode) gossipOnce(rnd *rand.Rand) {
 	if len(d.peers) == 0 {
 		return
@@ -54,7 +51,6 @@ func (d *Datanode) gossipOnce(rnd *rand.Rand) {
 		SenderClock: d.aggregateClock(snap),
 	})
 	if err != nil {
-		// Peer caído: loggear y continuar (no crashear).
 		d.log.Printf("gossip: %s no respondió (%s): %v", peer.ID, peer.Addr, err)
 		return
 	}
@@ -67,8 +63,6 @@ func (d *Datanode) gossipOnce(rnd *rand.Rand) {
 	}
 }
 
-// aggregateClock construye un reloj informativo agregando (máximo) los relojes
-// de todas las órdenes locales. Se envía como sender_clock (uso de log/depuración).
 func (d *Datanode) aggregateClock(orders []*pb.Order) *pb.VectorClock {
 	agg := &pb.VectorClock{Entries: map[string]int64{}}
 	for _, o := range orders {

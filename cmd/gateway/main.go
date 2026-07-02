@@ -1,14 +1,3 @@
-// Command gateway es el único punto de entrada de los clientes. Garantiza Read
-// Your Writes mediante afinidad de sesión con TTL y delega el balanceo al Broker.
-//
-// Configuración (flag > env var > default):
-//
-//	-puerto     puerto gRPC de escucha                  env GW_PUERTO
-//	-broker     dirección del Broker                    env GW_BROKER
-//	-nodos      Datanodes 'DN1@host:port,...'           env GW_NODOS
-//	-ttl        TTL de afinidad de sesión               env GW_TTL
-//	-idem-ttl   TTL del caché de idempotencia           env GW_IDEM_TTL
-//	-rpc-timeout timeout de RPC saliente                env GW_RPC_TIMEOUT
 package main
 
 import (

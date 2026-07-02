@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// nodeState mantiene la conexión persistente y el estado de salud de un Datanode.
 type nodeState struct {
 	peer   util.Peer
 	conn   *grpc.ClientConn
@@ -23,24 +22,21 @@ type nodeState struct {
 	alive  atomic.Bool
 }
 
-// Broker es un router SIN estado de negocio: reparte escrituras/lecturas por
-// Round Robin sobre los Datanodes vivos y hace health check periódico.
+
 type Broker struct {
 	pb.UnimplementedBrokerServiceServer
 
 	log   *log.Logger
 	nodes []*nodeState
-	rrIdx uint64 // índice round robin (atómico)
+	rrIdx uint64 
 	dial  time.Duration
 
-	// Para el Reporte.txt (Fase 5).
 	gatewayAddr string
 	reportPath  string
 	grace       time.Duration
-	reported    atomic.Bool // true si ya se generó un Reporte.txt con datos
+	reported    atomic.Bool 
 }
 
-// NewBroker crea el broker y abre conexiones perezosas a cada Datanode.
 func NewBroker(peers []util.Peer, dial, grace time.Duration, gatewayAddr, reportPath string) (*Broker, error) {
 	b := &Broker{
 		log:         log.New(os.Stdout, "[BROKER] ", log.LstdFlags|log.Lmicroseconds),
@@ -55,13 +51,12 @@ func NewBroker(peers []util.Peer, dial, grace time.Duration, gatewayAddr, report
 			return nil, fmt.Errorf("dial %s (%s): %w", p.ID, p.Addr, err)
 		}
 		ns := &nodeState{peer: p, conn: conn, client: pb.NewDatanodeServiceClient(conn)}
-		ns.alive.Store(true) // optimista; el health check corrige
+		ns.alive.Store(true) 
 		b.nodes = append(b.nodes, ns)
 	}
 	return b, nil
 }
 
-// pickLive devuelve el siguiente Datanode vivo en Round Robin, o nil si ninguno.
 func (b *Broker) pickLive() *nodeState {
 	n := len(b.nodes)
 	if n == 0 {
@@ -77,8 +72,7 @@ func (b *Broker) pickLive() *nodeState {
 	return nil
 }
 
-// routeUpdate enruta una escritura/evento a un Datanode vivo. Si el elegido
-// falla, lo marca caído y reintenta con el siguiente (hasta agotar la lista).
+
 func (b *Broker) routeUpdate(req *pb.UpdateOrderRequest, origen string) (*pb.UpdateOrderResponse, error) {
 	for attempt := 0; attempt < len(b.nodes); attempt++ {
 		ns := b.pickLive()
@@ -101,19 +95,15 @@ func (b *Broker) routeUpdate(req *pb.UpdateOrderRequest, origen string) (*pb.Upd
 	return &pb.UpdateOrderResponse{Applied: false, Message: "todos los Datanodes fallaron"}, nil
 }
 
-// --- RPCs del BrokerService ---
 
-// EnrutarEscritura reenvía una escritura del Gateway a un Datanode (Round Robin).
 func (b *Broker) EnrutarEscritura(_ context.Context, req *pb.UpdateOrderRequest) (*pb.UpdateOrderResponse, error) {
 	return b.routeUpdate(req, "ESCRITURA")
 }
 
-// EmitirEventoLogistico reenvía un evento del Productor a un Datanode (Round Robin).
 func (b *Broker) EmitirEventoLogistico(_ context.Context, req *pb.UpdateOrderRequest) (*pb.UpdateOrderResponse, error) {
 	return b.routeUpdate(req, "EVENTO-CSV")
 }
 
-// EnrutarLectura reenvía una lectura sin afinidad a un Datanode vivo (Round Robin).
 func (b *Broker) EnrutarLectura(_ context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
 	for attempt := 0; attempt < len(b.nodes); attempt++ {
 		ns := b.pickLive()
@@ -134,8 +124,7 @@ func (b *Broker) EnrutarLectura(_ context.Context, req *pb.GetOrderRequest) (*pb
 	return &pb.GetOrderResponse{Found: false}, nil
 }
 
-// SenalarFinEventos: el Productor terminó el CSV. Tras la ventana de gracia
-// (para que gossip converja) el Broker genera el Reporte.txt automáticamente.
+
 func (b *Broker) SenalarFinEventos(_ context.Context, req *pb.FinEventosRequest) (*pb.FinEventosResponse, error) {
 	b.log.Printf("FIN DE EVENTOS recibido (%d eventos). Fase 5: esperando %s de gracia para converger...", req.GetTotalEventos(), b.grace)
 	go func() {
@@ -147,8 +136,7 @@ func (b *Broker) SenalarFinEventos(_ context.Context, req *pb.FinEventosRequest)
 	return &pb.FinEventosResponse{Ok: true}, nil
 }
 
-// healthCheck hace Ping periódico a cada Datanode y actualiza su estado,
-// reincorporando los que vuelven a responder.
+
 func (b *Broker) healthCheck(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -165,8 +153,4 @@ func (b *Broker) healthCheck(interval time.Duration) {
 					b.log.Printf("health: %s VOLVIÓ (reincorporado al Round Robin)", ns.peer.ID)
 				} else {
 					b.log.Printf("health: %s CAÍDO (excluido del Round Robin): %v", ns.peer.ID, err)
-				}
-			}
-		}
-	}
-}
+				}}}}}

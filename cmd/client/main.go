@@ -1,15 +1,3 @@
-// Command client es el "Cliente Hambriento": genera pedidos contra el Gateway y
-// valida Read Your Writes (escribe, lee inmediatamente y comprueba que ve su
-// propia escritura). Imprime un mensaje explícito de éxito RYW por cada pedido.
-//
-// Configuración (flag > env var > default):
-//
-//	-id          ID del cliente (1/2/3)                   env CLI_ID
-//	-gateway     dirección del Gateway                    env CLI_GATEWAY
-//	-pedidos     cuántos pedidos generar                  env CLI_PEDIDOS
-//	-intervalo   espera entre pedidos                     env CLI_INTERVALO
-//	-delay-inicial  espera antes de arrancar (que suba el sistema)  env CLI_DELAY
-//	-rpc-timeout timeout de RPC                            env CLI_RPC_TIMEOUT
 package main
 
 import (
@@ -58,17 +46,14 @@ func main() {
 		}
 		if i < *pedidos {
 			time.Sleep(*intervalo)
-		}
-	}
+		}}
 	lg.Printf("FIN: %d/%d pedidos con RYW validado", okRYW, *pedidos)
 }
 
-// hacerPedido ejecuta el ciclo write -> read -> validación RYW para un pedido.
-// Devuelve true si RYW se validó con éxito.
+
 func hacerPedido(client pb.GatewayServiceClient, lg *log.Logger, clientID, orderID, restaurante string, timeout time.Duration) bool {
 	reqID := util.GenID("req-" + clientID)
 
-	// --- Escritura ---
 	wctx, cancel := util.CtxTimeout(timeout)
 	cResp, err := client.CrearPedido(wctx, &pb.CrearPedidoRequest{
 		RequestId:  reqID,
@@ -83,13 +68,11 @@ func hacerPedido(client pb.GatewayServiceClient, lg *log.Logger, clientID, order
 		return false
 	}
 	if !cResp.GetSuccess() {
-		// Error de negocio (p. ej. sin Datanodes): NO se valida RYW sobre un fallo.
 		lg.Printf("CrearPedido %s -> RECHAZADO: %s (no valido RYW)", orderID, cResp.GetMessage())
 		return false
 	}
 	lg.Printf("CrearPedido %s OK en %s (restaurante %s)", orderID, cResp.GetDatanodeId(), restaurante)
 
-	// --- Lectura inmediata (debe ver la propia escritura por afinidad) ---
 	rctx, cancel2 := util.CtxTimeout(timeout)
 	qResp, err := client.ConsultarEstado(rctx, &pb.ConsultarEstadoRequest{ClientId: clientID, OrderId: orderID})
 	cancel2()
@@ -98,7 +81,6 @@ func hacerPedido(client pb.GatewayServiceClient, lg *log.Logger, clientID, order
 		return false
 	}
 
-	// --- Validación Read Your Writes ---
 	if qResp.GetFound() && qResp.GetOrder().GetOrderId() == orderID && qResp.GetFromAffinity() {
 		lg.Printf("RYW OK: pedido %s confirmado en %s (estado %q, afinidad de sesion)",
 			orderID, qResp.GetDatanodeId(), qResp.GetOrder().GetStatus())

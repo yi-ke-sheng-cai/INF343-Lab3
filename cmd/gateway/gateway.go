@@ -16,8 +16,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Gateway es el único punto de entrada de los clientes. Garantiza Read Your
-// Writes mediante afinidad de sesión y delega el balanceo al Broker.
+
 type Gateway struct {
 	pb.UnimplementedGatewayServiceServer
 
@@ -28,22 +27,18 @@ type Gateway struct {
 	brokerConn   *grpc.ClientConn
 	brokerClient pb.BrokerServiceClient
 
-	// Conexiones directas a Datanodes por ID (para lecturas con afinidad).
 	dnClients map[string]pb.DatanodeServiceClient
 
 	dial time.Duration
 
-	// Idempotencia: respuestas cacheadas por request_id.
 	idemMu  sync.Mutex
 	idem    map[string]*pb.CrearPedidoResponse
 	idemTTL time.Duration
 
-	// Auditoría RYW para el Reporte.txt (dedup por client_id+order_id).
 	rywMu sync.Mutex
 	ryw   map[string]*pb.RYWEntry
 }
 
-// NewGateway crea el Gateway con conexiones al Broker y a cada Datanode.
 func NewGateway(brokerAddr string, datanodes []util.Peer, ttl, idemTTL, dial time.Duration) (*Gateway, error) {
 	g := &Gateway{
 		log:        log.New(os.Stdout, "[GATEWAY] ", log.LstdFlags|log.Lmicroseconds),
@@ -73,10 +68,8 @@ func NewGateway(brokerAddr string, datanodes []util.Peer, ttl, idemTTL, dial tim
 	return g, nil
 }
 
-// CrearPedido: recibe la escritura del cliente, la enruta vía Broker a un
-// Datanode, registra la afinidad de sesión y confirma. Idempotente por request_id.
+
 func (g *Gateway) CrearPedido(ctx context.Context, req *pb.CrearPedidoRequest) (*pb.CrearPedidoResponse, error) {
-	// Idempotencia: reintento con mismo request_id -> misma respuesta.
 	if req.GetRequestId() != "" {
 		g.idemMu.Lock()
 		if cached, ok := g.idem[req.GetRequestId()]; ok {
@@ -103,13 +96,11 @@ func (g *Gateway) CrearPedido(ctx context.Context, req *pb.CrearPedidoRequest) (
 		return &pb.CrearPedidoResponse{Success: false, Message: "broker no disponible: " + err.Error()}, nil
 	}
 	if resp.GetDatanodeId() == "" {
-		// No hubo Datanode que procesara (todos caídos): error de negocio propagado.
 		out := &pb.CrearPedidoResponse{Success: false, Message: resp.GetMessage()}
 		g.log.Printf("CrearPedido cliente=%s order=%s -> FALLO: %s", req.GetClientId(), req.GetOrderId(), resp.GetMessage())
 		return out, nil
 	}
 
-	// Registrar afinidad: futuras lecturas de este cliente van a ese Datanode.
 	g.sessions.set(req.GetClientId(), resp.GetDatanodeId())
 	g.log.Printf("CrearPedido cliente=%s order=%s -> %s | afinidad registrada (TTL %s)",
 		req.GetClientId(), req.GetOrderId(), resp.GetDatanodeId(), g.sessions.ttl)
@@ -129,8 +120,7 @@ func (g *Gateway) CrearPedido(ctx context.Context, req *pb.CrearPedidoRequest) (
 	return out, nil
 }
 
-// ConsultarEstado: con afinidad activa fuerza la lectura al Datanode afín
-// (bypass del Broker → RYW); sin afinidad delega el balanceo al Broker.
+
 func (g *Gateway) ConsultarEstado(ctx context.Context, req *pb.ConsultarEstadoRequest) (*pb.ConsultarEstadoResponse, error) {
 	if dnID, ok := g.sessions.get(req.GetClientId()); ok {
 		if client, exists := g.dnClients[dnID]; exists {
@@ -145,7 +135,6 @@ func (g *Gateway) ConsultarEstado(ctx context.Context, req *pb.ConsultarEstadoRe
 				}
 				return &pb.ConsultarEstadoResponse{Found: resp.GetFound(), Order: resp.GetOrder(), DatanodeId: dnID, FromAffinity: true}, nil
 			}
-			// El Datanode afín cayó: caer al Broker en vez de fallar.
 			g.log.Printf("ConsultarEstado cliente=%s: Datanode afín %s no responde (%v) -> fallback a Broker", req.GetClientId(), dnID, err)
 		}
 	}
@@ -162,7 +151,6 @@ func (g *Gateway) ConsultarEstado(ctx context.Context, req *pb.ConsultarEstadoRe
 	return &pb.ConsultarEstadoResponse{Found: resp.GetFound(), Order: resp.GetOrder(), DatanodeId: resp.GetDatanodeId(), FromAffinity: false}, nil
 }
 
-// ObtenerAuditoriaRYW entrega al Broker las validaciones RYW para el Reporte.txt.
 func (g *Gateway) ObtenerAuditoriaRYW(_ context.Context, _ *pb.AuditoriaRYWRequest) (*pb.AuditoriaRYWResponse, error) {
 	g.rywMu.Lock()
 	defer g.rywMu.Unlock()
@@ -179,22 +167,17 @@ func (g *Gateway) ObtenerAuditoriaRYW(_ context.Context, _ *pb.AuditoriaRYWReque
 	return &pb.AuditoriaRYWResponse{Entries: out}, nil
 }
 
-// registrarRYW guarda una validación RYW (dedup por cliente+pedido).
 func (g *Gateway) registrarRYW(clientID, orderID, dnID string) {
 	g.rywMu.Lock()
 	g.ryw[clientID+"|"+orderID] = &pb.RYWEntry{ClientId: clientID, OrderId: orderID, DatanodeId: dnID}
 	g.rywMu.Unlock()
 }
 
-// cleanupIdem expira las respuestas idempotentes cacheadas.
 func (g *Gateway) cleanupIdem() {
 	ticker := time.NewTicker(g.idemTTL)
 	defer ticker.Stop()
 	for range ticker.C {
 		g.idemMu.Lock()
-		// Vaciado simple: al vencer el ciclo se limpia todo el caché (los
-		// reintentos ocurren en ventanas cortas). Acota memoria sin timestamps.
 		g.idem = make(map[string]*pb.CrearPedidoResponse)
 		g.idemMu.Unlock()
-	}
-}
+	}}

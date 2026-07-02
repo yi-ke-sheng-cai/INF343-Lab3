@@ -10,15 +10,8 @@ import (
 	"distrieats/internal/vclock"
 )
 
-// GenerarReporte construye el Reporte.txt de cierre (Fase 5):
-//  1. Estado global de pedidos, tomado de un Datanode vivo (ya convergido).
-//  2. Auditoría Read Your Writes, solicitada al Gateway.
-//
-// El formato es el exacto pedido en el enunciado.
+
 func (b *Broker) GenerarReporte() error {
-	// El reporte de la ventana de gracia (Fase 5) es el canónico: se genera una
-	// sola vez, ya convergido. Un cierre posterior (SIGTERM) no debe regenerarlo
-	// —para entonces Gateway/Datanodes pueden estar caídos y lo dejaría incompleto.
 	if b.reported.Load() {
 		b.log.Printf("Reporte: ya existe un reporte final; omito regeneración")
 		return nil
@@ -57,8 +50,6 @@ func (b *Broker) GenerarReporte() error {
 	b.log.Printf("Reporte.txt generado en %s (%d pedidos, %d validaciones RYW)", b.reportPath, len(orders), len(ryw))
 	return nil
 }
-
-// snapshotDesdeDatanode pide el estado completo al primer Datanode que responda.
 func (b *Broker) snapshotDesdeDatanode() []*pb.Order {
 	for _, ns := range b.nodes {
 		if !ns.alive.Load() {
@@ -75,7 +66,7 @@ func (b *Broker) snapshotDesdeDatanode() []*pb.Order {
 	return nil
 }
 
-// auditoriaDesdeGateway pide al Gateway la lista de validaciones RYW.
+
 func (b *Broker) auditoriaDesdeGateway() []*pb.RYWEntry {
 	if b.gatewayAddr == "" {
 		return nil

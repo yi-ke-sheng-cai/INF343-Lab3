@@ -10,16 +10,14 @@ import (
 	"strings"
 )
 
-// Evento es una línea del CSV ya validada: una transición de estado de un pedido.
 type Evento struct {
 	OrderID    string
 	Restaurant string
-	Actor      string // Restaurante | Repartidor (informativo)
+	Actor      string 
 	Status     string
-	T          int // tiempo_relativo (orden/concurrencia)
+	T          int 
 }
 
-// columnas esperadas del CSV (cabecera): pedido_id,restaurante,actor,estado,tiempo_relativo
 const (
 	colPedidoID = "pedido_id"
 	colRest     = "restaurante"
@@ -28,9 +26,7 @@ const (
 	colTiempo   = "tiempo_relativo"
 )
 
-// LeerEventos parsea el CSV de forma defensiva: usa la cabecera para mapear
-// columnas por nombre (tolera reordenamientos), salta filas corruptas sin
-// crashear y las loggea. Devuelve los eventos en el orden del archivo.
+
 func LeerEventos(path string, lg *log.Logger) ([]Evento, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -39,10 +35,9 @@ func LeerEventos(path string, lg *log.Logger) ([]Evento, error) {
 	defer f.Close()
 
 	r := csv.NewReader(bufio.NewReader(f))
-	r.FieldsPerRecord = -1 // no exigir número fijo; validamos manualmente
+	r.FieldsPerRecord = -1 
 	r.TrimLeadingSpace = true
 
-	// Cabecera -> índices de columna.
 	header, err := r.Read()
 	if err != nil {
 		return nil, err
@@ -55,8 +50,7 @@ func LeerEventos(path string, lg *log.Logger) ([]Evento, error) {
 	for _, c := range req {
 		if _, ok := idx[c]; !ok {
 			lg.Printf("ADVERTENCIA: columna '%s' ausente en la cabecera; se intentará por posición", c)
-		}
-	}
+		}}
 
 	get := func(row []string, name string, pos int) string {
 		if i, ok := idx[name]; ok && i < len(row) {

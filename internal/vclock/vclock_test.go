@@ -24,10 +24,7 @@ func TestCompare(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if got := Compare(vc(c.a), vc(c.b)); got != c.want {
 				t.Fatalf("Compare = %v, want %v", got, c.want)
-			}
-		})
-	}
-}
+			}})}}
 
 func TestMerge(t *testing.T) {
 	m := Merge(vc(map[string]int64{"DN1": 3, "DN2": 1}), vc(map[string]int64{"DN1": 2, "DN2": 5, "DN3": 1}))
@@ -35,9 +32,7 @@ func TestMerge(t *testing.T) {
 	for k, v := range want {
 		if m.Entries[k] != v {
 			t.Fatalf("Merge[%s] = %d, want %d", k, m.Entries[k], v)
-		}
-	}
-}
+		}}}
 
 func TestIncrementDoesNotMutateSource(t *testing.T) {
 	orig := vc(map[string]int64{"DN1": 1})
@@ -48,16 +43,14 @@ func TestIncrementDoesNotMutateSource(t *testing.T) {
 	}
 	if cl.Entries["DN1"] != 2 {
 		t.Fatalf("Increment = %d, want 2", cl.Entries["DN1"])
-	}
-}
+	}}
 
 func TestResolveFirstWrite(t *testing.T) {
 	in := &pb.Order{OrderId: "P1", Status: StatusRecibido, Clock: vc(map[string]int64{"DN1": 1})}
 	r := Resolve(nil, in)
 	if r.Outcome != FirstWrite || !r.Applied {
 		t.Fatalf("primera escritura: outcome=%v applied=%v", r.Outcome, r.Applied)
-	}
-}
+	}}
 
 func TestResolveDominantApplies(t *testing.T) {
 	cur := &pb.Order{OrderId: "P1", Status: StatusRecibido, Clock: vc(map[string]int64{"DN1": 1, "DN2": 0})}
@@ -68,8 +61,7 @@ func TestResolveDominantApplies(t *testing.T) {
 	}
 	if r.Winner.Clock.Entries["DN1"] != 2 {
 		t.Fatalf("merge reloj incorrecto: %v", r.Winner.Clock.Entries)
-	}
-}
+	}}
 
 func TestResolveStaleDiscarded(t *testing.T) {
 	cur := &pb.Order{OrderId: "P1", Status: StatusEnCamino, Clock: vc(map[string]int64{"DN1": 3})}
@@ -77,10 +69,8 @@ func TestResolveStaleDiscarded(t *testing.T) {
 	r := Resolve(cur, in)
 	if r.Outcome != DiscardedStale || r.Applied || r.Winner.Status != StatusEnCamino {
 		t.Fatalf("obsoleto: outcome=%v applied=%v status=%s", r.Outcome, r.Applied, r.Winner.Status)
-	}
-}
+	}}
 
-// Conflicto concurrente: gana el estado más avanzado en la cadena.
 func TestResolveConcurrentAdvances(t *testing.T) {
 	cur := &pb.Order{OrderId: "P1", Status: StatusPreparando, Clock: vc(map[string]int64{"DN1": 2, "DN2": 0})}
 	in := &pb.Order{OrderId: "P1", Status: StatusEnCamino, Clock: vc(map[string]int64{"DN1": 0, "DN2": 2})}
@@ -88,24 +78,19 @@ func TestResolveConcurrentAdvances(t *testing.T) {
 	if r.Outcome != ConflictResolved || r.Winner.Status != StatusEnCamino {
 		t.Fatalf("concurrente: outcome=%v status=%s", r.Outcome, r.Winner.Status)
 	}
-	// El reloj resultante debe ser el merge (máximos): DN1:2, DN2:2.
 	if r.Winner.Clock.Entries["DN1"] != 2 || r.Winner.Clock.Entries["DN2"] != 2 {
 		t.Fatalf("merge en conflicto: %v", r.Winner.Clock.Entries)
-	}
-}
+	}}
 
-// Cancelado tiene prioridad absoluta incluso frente a Entregado, y aun cuando el
-// entrante sea "menos avanzado" en la cadena normal.
+
 func TestResolveCancelWinsConcurrent(t *testing.T) {
 	cur := &pb.Order{OrderId: "P1", Status: StatusEntregado, Clock: vc(map[string]int64{"DN1": 3, "DN2": 0})}
 	in := &pb.Order{OrderId: "P1", Status: StatusCancelado, Clock: vc(map[string]int64{"DN1": 0, "DN2": 3})}
 	r := Resolve(cur, in)
 	if r.Winner.Status != StatusCancelado {
 		t.Fatalf("cancelado debe ganar, got %s", r.Winner.Status)
-	}
-}
+	}}
 
-// Cancelado nunca es sobrescrito por otro estado en concurrencia.
 func TestResolveCancelNotOverwritten(t *testing.T) {
 	cur := &pb.Order{OrderId: "P1", Status: StatusCancelado, Clock: vc(map[string]int64{"DN1": 3, "DN2": 0})}
 	in := &pb.Order{OrderId: "P1", Status: StatusEntregado, Clock: vc(map[string]int64{"DN1": 0, "DN2": 3})}
@@ -115,7 +100,6 @@ func TestResolveCancelNotOverwritten(t *testing.T) {
 	}
 }
 
-// Determinismo: resolver A vs B y B vs A converge al mismo estado y reloj.
 func TestResolveDeterministicOrderIndependent(t *testing.T) {
 	a := &pb.Order{OrderId: "P1", Status: StatusPreparando, Timestamp: 10, Clock: vc(map[string]int64{"DN1": 2, "DN2": 0})}
 	b := &pb.Order{OrderId: "P1", Status: StatusEnCamino, Timestamp: 20, Clock: vc(map[string]int64{"DN1": 0, "DN2": 2})}
@@ -123,5 +107,4 @@ func TestResolveDeterministicOrderIndependent(t *testing.T) {
 	r2 := Resolve(b, a)
 	if r1.Winner.Status != r2.Winner.Status {
 		t.Fatalf("no determinista: %s vs %s", r1.Winner.Status, r2.Winner.Status)
-	}
-}
+	}}

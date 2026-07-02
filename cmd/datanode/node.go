@@ -15,25 +15,23 @@ import (
 	"distrieats/internal/vclock"
 )
 
-// Datanode es una réplica de la base de datos: almacena pedidos en memoria,
-// mantiene su reloj vectorial y resuelve conflictos. Es stateful.
+
 type Datanode struct {
 	pb.UnimplementedDatanodeServiceServer
 
 	id  string
 	log *log.Logger
 
-	peers  []util.Peer   // otros Datanodes (excluye a sí mismo)
-	dial   time.Duration // timeout de RPC saliente
-	reqTTL time.Duration // TTL de request_id procesados (idempotencia)
+	peers  []util.Peer   
+	dial   time.Duration 
+	reqTTL time.Duration 
 
 	mu      sync.RWMutex
-	orders  map[string]*pb.Order // order_id -> estado actual
-	seenReq map[string]time.Time // request_id -> instante de proceso
+	orders  map[string]*pb.Order 
+	seenReq map[string]time.Time 
 }
 
-// NewDatanode construye un Datanode con estado vacío. La recuperación tras caída
-// se apoya exclusivamente en gossip (arranca vacío y pide estado a sus pares).
+
 func NewDatanode(id string, peers []util.Peer, dial, reqTTL time.Duration) *Datanode {
 	return &Datanode{
 		id:      id,
@@ -46,11 +44,7 @@ func NewDatanode(id string, peers []util.Peer, dial, reqTTL time.Duration) *Data
 	}
 }
 
-// --- RPCs del DatanodeService ---
 
-// UpdateOrder recibe una ORIGINACIÓN de cambio (desde Broker/Gateway/Productor).
-// El Datanode incrementa su propia entrada del reloj (aplica un cambio local) y
-// resuelve el estado con la política determinista.
 func (d *Datanode) UpdateOrder(_ context.Context, req *pb.UpdateOrderRequest) (*pb.UpdateOrderResponse, error) {
 	in := req.GetOrder()
 	if in == nil || in.GetOrderId() == "" {
@@ -60,7 +54,6 @@ func (d *Datanode) UpdateOrder(_ context.Context, req *pb.UpdateOrderRequest) (*
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	// Idempotencia: un request_id ya procesado no vuelve a avanzar el reloj.
 	if id := req.GetRequestId(); id != "" {
 		if _, seen := d.seenReq[id]; seen {
 			cur := d.orders[in.GetOrderId()]
@@ -72,9 +65,6 @@ func (d *Datanode) UpdateOrder(_ context.Context, req *pb.UpdateOrderRequest) (*
 
 	cur := d.orders[in.GetOrderId()]
 
-	// Construir el candidato local: hereda el reloj actual e incrementa la
-	// entrada propia (origina un evento). El estado se decide por política para
-	// no retroceder ni sobrescribir Cancelado.
 	candidate := &pb.Order{
 		OrderId:    in.GetOrderId(),
 		ClientId:   in.GetClientId(),
@@ -98,7 +88,6 @@ func (d *Datanode) UpdateOrder(_ context.Context, req *pb.UpdateOrderRequest) (*
 	}, nil
 }
 
-// GetOrder devuelve el estado local de un pedido (lectura directa).
 func (d *Datanode) GetOrder(_ context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -111,9 +100,7 @@ func (d *Datanode) GetOrder(_ context.Context, req *pb.GetOrderRequest) (*pb.Get
 	return &pb.GetOrderResponse{Found: true, Order: o, DatanodeId: d.id}, nil
 }
 
-// GossipSync recibe un snapshot de un peer, fusiona orden por orden (algoritmo
-// causal + política) y devuelve su propio estado para que el peer también
-// converja (intercambio bidireccional).
+
 func (d *Datanode) GossipSync(_ context.Context, req *pb.GossipSyncRequest) (*pb.GossipSyncResponse, error) {
 	d.mu.Lock()
 	applied := d.mergeReplicated(req.GetOrders(), "gossip<-"+req.GetSenderId())
@@ -126,24 +113,17 @@ func (d *Datanode) GossipSync(_ context.Context, req *pb.GossipSyncRequest) (*pb
 	return &pb.GossipSyncResponse{Orders: out, ReceiverId: d.id}, nil
 }
 
-// Ping responde salud (usado por el Broker para el round robin y health check).
 func (d *Datanode) Ping(_ context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
 	return &pb.PingResponse{Alive: true, NodeId: d.id}, nil
 }
 
-// Snapshot entrega el estado completo (usado por el Broker para el Reporte.txt).
 func (d *Datanode) Snapshot(_ context.Context, _ *pb.SnapshotRequest) (*pb.SnapshotResponse, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return &pb.SnapshotResponse{Orders: d.snapshotLocked(), NodeId: d.id}, nil
 }
 
-// --- Lógica interna ---
 
-// mergeReplicated fusiona órdenes que YA traen reloj (replicación por gossip).
-// Aplica el algoritmo causal completo (dominancia/concurrencia + política) sin
-// incrementar la entrada propia (no se origina, se absorbe). Devuelve cuántas
-// órdenes cambiaron de estado. Requiere lock tomado.
 func (d *Datanode) mergeReplicated(orders []*pb.Order, source string) int {
 	changed := 0
 	for _, in := range orders {
@@ -158,7 +138,6 @@ func (d *Datanode) mergeReplicated(orders []*pb.Order, source string) int {
 				in.GetStatus(), vclock.String(in.GetClock()), res.Winner.Status, vclock.String(res.Winner.Clock))
 		}
 		if res.Outcome != vclock.DiscardedStale {
-			// Cambió el estado o es primera escritura: contabilizar si difiere.
 			if cur == nil || statusOf(cur) != res.Winner.Status || vclock.Compare(clockOf(cur), res.Winner.Clock) != vclock.Equal {
 				changed++
 			}
@@ -168,8 +147,7 @@ func (d *Datanode) mergeReplicated(orders []*pb.Order, source string) int {
 	return changed
 }
 
-// snapshotLocked devuelve una copia ordenada por order_id del estado. Requiere
-// lock (R o W) tomado.
+
 func (d *Datanode) snapshotLocked() []*pb.Order {
 	out := make([]*pb.Order, 0, len(d.orders))
 	for _, o := range d.orders {
@@ -179,7 +157,6 @@ func (d *Datanode) snapshotLocked() []*pb.Order {
 	return out
 }
 
-// cleanupSeen expira periódicamente los request_id procesados para acotar memoria.
 func (d *Datanode) cleanupSeen() {
 	ticker := time.NewTicker(d.reqTTL)
 	defer ticker.Stop()
@@ -195,9 +172,7 @@ func (d *Datanode) cleanupSeen() {
 	}
 }
 
-// WriteFinalState vuelca el estado local a un archivo en formato canónico
-// (ordenado, reloj normalizado). Los archivos de todos los Datanodes deben ser
-// idénticos tras converger: sirve como test de convergencia.
+
 func (d *Datanode) WriteFinalState(path string) error {
 	d.mu.RLock()
 	orders := d.snapshotLocked()
@@ -218,7 +193,7 @@ func (d *Datanode) WriteFinalState(path string) error {
 	return nil
 }
 
-// --- helpers de nil-safety ---
+
 
 func clockOf(o *pb.Order) *pb.VectorClock {
 	if o == nil {

@@ -1,15 +1,3 @@
-// Command datanode arranca una réplica de almacenamiento de DistriEats:
-// storage en memoria, relojes vectoriales, resolución de conflictos y gossip.
-//
-// Configuración (flag > env var > default), nada hardcodeado:
-//
-//	-id        ID lógico del nodo (DN1/DN2/DN3)          env DN_ID
-//	-puerto    puerto gRPC de escucha                    env DN_PUERTO
-//	-peers     lista "DN2@host:port,DN3@host:port"       env DN_PEERS
-//	-gossip-min / -gossip-max  ventana de jitter gossip  env DN_GOSSIP_MIN/MAX
-//	-rpc-timeout  timeout de RPC saliente                env DN_RPC_TIMEOUT
-//	-req-ttl   TTL de request_id (idempotencia)          env DN_REQ_TTL
-//	-final-log ruta del volcado de estado final          env DN_FINAL_LOG
 package main
 
 import (
@@ -52,7 +40,6 @@ func main() {
 	go dn.gossipLoop(*gossipMin, *gossipMax)
 	go dn.cleanupSeen()
 
-	// Volcado de estado final ante SIGINT/SIGTERM (docker stop / cierre Fase 5).
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

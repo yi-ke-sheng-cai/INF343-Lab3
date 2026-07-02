@@ -1,17 +1,4 @@
-// Command broker es el router central de DistriEats: reparte escrituras/lecturas
-// y eventos del CSV por Round Robin sobre los Datanodes vivos, hace health check
-// y genera el Reporte.txt al cierre de la simulación (Fase 5). No tiene estado
-// de negocio.
-//
-// Configuración (flag > env var > default):
-//
-//	-puerto        puerto gRPC de escucha                 env BROKER_PUERTO
-//	-nodos         "DN1@host:port,DN2@host:port,..."      env BROKER_NODOS
-//	-gateway       dirección del Gateway (para RYW)       env BROKER_GATEWAY
-//	-health        intervalo de health check              env BROKER_HEALTH
-//	-rpc-timeout   timeout de RPC saliente                env BROKER_RPC_TIMEOUT
-//	-grace         ventana de gracia antes del Reporte    env BROKER_GRACE
-//	-reporte       ruta del Reporte.txt                   env BROKER_REPORTE
+
 package main
 
 import (
@@ -60,7 +47,6 @@ func main() {
 
 	go b.healthCheck(*health)
 
-	// Fallback: generar Reporte.txt también ante SIGINT/SIGTERM.
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
