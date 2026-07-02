@@ -21,7 +21,7 @@ Simulación de un sistema de delivery distribuido con **consistencia eventual** 
 
 ## Ejecución en VMs
 
-Configurar `.env` con IPs reales. Ejecutar en orden: **MV2 → MV3 → MV4 → MV1**.
+Configurar `.env` con IPs reales. Ejecutar en orden: **MV2 → MV3 → MV4 → MV1**, solo se usa build la primera ejecucion o si se modifico algo mas.
 
 ```
 MV2: docker-compose -f docker-compose-vm2.yml up --build
@@ -30,7 +30,7 @@ MV4: docker-compose -f docker-compose-vm4.yml up --build
 MV1: mkdir -p resultados && docker-compose -f docker-compose-vm1.yml up --build
 ```
 
-El sistema corre automáticamente: el Productor emite eventos del CSV, los Datanodes convergen por gossip, los Clientes validan RYW. Al terminar se genera `resultados/Reporte.txt` y los `estado_final_DN*.log`.
+
 
 ### Desarrollo local
 
