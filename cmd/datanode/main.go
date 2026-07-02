@@ -27,7 +27,12 @@ func main() {
 	finalLog := flag.String("final-log", util.EnvOr("DN_FINAL_LOG", ""), "ruta del volcado de estado final")
 	flag.Parse()
 
-	dn := NewDatanode(*id, util.ParsePeers(*peers), *rpcTimeout, *reqTTL)
+	finalPath := *finalLog
+	if finalPath == "" {
+		finalPath = "estado_final_" + *id + ".log"
+	}
+
+	dn := NewDatanode(*id, util.ParsePeers(*peers), *rpcTimeout, *reqTTL, finalPath)
 
 	lis, err := net.Listen("tcp", ":"+*puerto)
 	if err != nil {
@@ -43,13 +48,15 @@ func main() {
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-		path := *finalLog
-		if path == "" {
-			path = "estado_final_" + *id + ".log"
-		}
-		if err := dn.WriteFinalState(path); err != nil {
-			dn.log.Printf("error al volcar estado final: %v", err)
+
+		select {
+		case <-dn.shutdown:
+			dn.log.Printf("Shutdown iniciado, deteniendo servidor gRPC...")
+		case <-sig:
+			dn.log.Printf("Señal recibida, volcando estado final...")
+			if err := dn.WriteFinalState(finalPath); err != nil {
+				dn.log.Printf("error al volcar estado final: %v", err)
+			}
 		}
 		srv.GracefulStop()
 		os.Exit(0)

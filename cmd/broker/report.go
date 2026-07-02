@@ -48,6 +48,18 @@ func (b *Broker) GenerarReporte() error {
 		b.reported.Store(true)
 	}
 	b.log.Printf("Reporte.txt generado en %s (%d pedidos, %d validaciones RYW)", b.reportPath, len(orders), len(ryw))
+
+	b.log.Printf("Enviando señal de Shutdown a todos los Datanodes...")
+	for _, ns := range b.nodes {
+		ctx, cancel := util.CtxTimeout(b.dial)
+		_, err := ns.client.Shutdown(ctx, &pb.PingRequest{})
+		cancel()
+		if err != nil {
+			b.log.Printf("Shutdown %s: %v", ns.peer.ID, err)
+		} else {
+			b.log.Printf("Shutdown %s: OK", ns.peer.ID)
+		}
+	}
 	return nil
 }
 func (b *Broker) snapshotDesdeDatanode() []*pb.Order {

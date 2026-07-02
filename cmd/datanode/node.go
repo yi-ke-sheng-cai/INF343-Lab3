@@ -19,8 +19,10 @@ import (
 type Datanode struct {
 	pb.UnimplementedDatanodeServiceServer
 
-	id  string
-	log *log.Logger
+	id        string
+	log       *log.Logger
+	finalPath string
+	shutdown  chan struct{}
 
 	peers  []util.Peer   
 	dial   time.Duration 
@@ -32,15 +34,17 @@ type Datanode struct {
 }
 
 
-func NewDatanode(id string, peers []util.Peer, dial, reqTTL time.Duration) *Datanode {
+func NewDatanode(id string, peers []util.Peer, dial, reqTTL time.Duration, finalPath string) *Datanode {
 	return &Datanode{
-		id:      id,
-		log:     log.New(os.Stdout, fmt.Sprintf("[DATANODE-%s] ", id), log.LstdFlags|log.Lmicroseconds),
-		peers:   peers,
-		dial:    dial,
-		reqTTL:  reqTTL,
-		orders:  make(map[string]*pb.Order),
-		seenReq: make(map[string]time.Time),
+		id:        id,
+		log:       log.New(os.Stdout, fmt.Sprintf("[DATANODE-%s] ", id), log.LstdFlags|log.Lmicroseconds),
+		finalPath: finalPath,
+		shutdown:  make(chan struct{}),
+		peers:     peers,
+		dial:      dial,
+		reqTTL:    reqTTL,
+		orders:    make(map[string]*pb.Order),
+		seenReq:   make(map[string]time.Time),
 	}
 }
 
@@ -114,6 +118,17 @@ func (d *Datanode) GossipSync(_ context.Context, req *pb.GossipSyncRequest) (*pb
 }
 
 func (d *Datanode) Ping(_ context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
+	return &pb.PingResponse{Alive: true, NodeId: d.id}, nil
+}
+
+func (d *Datanode) Shutdown(_ context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
+	d.log.Printf("Shutdown recibido del Broker, escribiendo estado final...")
+	if p := d.finalPath; p != "" {
+		if err := d.WriteFinalState(p); err != nil {
+			d.log.Printf("error al volcar estado final por shutdown: %v", err)
+		}
+	}
+	close(d.shutdown)
 	return &pb.PingResponse{Alive: true, NodeId: d.id}, nil
 }
 

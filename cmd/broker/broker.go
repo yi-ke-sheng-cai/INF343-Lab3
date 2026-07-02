@@ -35,6 +35,7 @@ type Broker struct {
 	reportPath  string
 	grace       time.Duration
 	reported    atomic.Bool 
+	stop        chan struct{}
 }
 
 func NewBroker(peers []util.Peer, dial, grace time.Duration, gatewayAddr, reportPath string) (*Broker, error) {
@@ -44,6 +45,7 @@ func NewBroker(peers []util.Peer, dial, grace time.Duration, gatewayAddr, report
 		gatewayAddr: gatewayAddr,
 		reportPath:  reportPath,
 		grace:       grace,
+		stop:        make(chan struct{}),
 	}
 	for _, p := range peers {
 		conn, err := util.Dial(p.Addr)
@@ -132,6 +134,7 @@ func (b *Broker) SenalarFinEventos(_ context.Context, req *pb.FinEventosRequest)
 		if err := b.GenerarReporte(); err != nil {
 			b.log.Printf("error generando Reporte.txt: %v", err)
 		}
+		close(b.stop)
 	}()
 	return &pb.FinEventosResponse{Ok: true}, nil
 }

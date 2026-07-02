@@ -19,7 +19,11 @@ func (d *Datanode) gossipLoop(min, max time.Duration) {
 		if max > min {
 			wait += time.Duration(rnd.Int63n(int64(max - min)))
 		}
-		time.Sleep(wait)
+		select {
+		case <-d.shutdown:
+			return
+		case <-time.After(wait):
+		}
 		d.gossipOnce(rnd)
 	}
 }

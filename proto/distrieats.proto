@@ -92,6 +92,11 @@ message AuditoriaRYWResponse {
   repeated RYWEntry entries = 1;
 }
 
+message ShutdownRequest {}
+message ShutdownResponse {
+  bool ok = 1;
+}
+
 message FinEventosRequest {
   int32 total_eventos = 1;
 }
@@ -118,4 +123,5 @@ service DatanodeService {
   rpc GossipSync(GossipSyncRequest) returns (GossipSyncResponse);
   rpc Ping(PingRequest) returns (PingResponse);
   rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }

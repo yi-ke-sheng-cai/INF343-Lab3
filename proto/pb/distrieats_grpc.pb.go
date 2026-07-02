@@ -361,6 +361,7 @@ const (
 	DatanodeService_GossipSync_FullMethodName  = "/distrieats.DatanodeService/GossipSync"
 	DatanodeService_Ping_FullMethodName        = "/distrieats.DatanodeService/Ping"
 	DatanodeService_Snapshot_FullMethodName    = "/distrieats.DatanodeService/Snapshot"
+	DatanodeService_Shutdown_FullMethodName    = "/distrieats.DatanodeService/Shutdown"
 )
 
 
@@ -370,6 +371,7 @@ type DatanodeServiceClient interface {
 	GossipSync(ctx context.Context, in *GossipSyncRequest, opts ...grpc.CallOption) (*GossipSyncResponse, error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (*SnapshotResponse, error)
+	Shutdown(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 }
 
 type datanodeServiceClient struct {
@@ -430,6 +432,16 @@ func (c *datanodeServiceClient) Snapshot(ctx context.Context, in *SnapshotReques
 	return out, nil
 }
 
+func (c *datanodeServiceClient) Shutdown(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PingResponse)
+	err := c.cc.Invoke(ctx, DatanodeService_Shutdown_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 
 type DatanodeServiceServer interface {
 	UpdateOrder(context.Context, *UpdateOrderRequest) (*UpdateOrderResponse, error)
@@ -437,6 +449,7 @@ type DatanodeServiceServer interface {
 	GossipSync(context.Context, *GossipSyncRequest) (*GossipSyncResponse, error)
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	Snapshot(context.Context, *SnapshotRequest) (*SnapshotResponse, error)
+	Shutdown(context.Context, *PingRequest) (*PingResponse, error)
 	mustEmbedUnimplementedDatanodeServiceServer()
 }
 
@@ -453,6 +466,8 @@ func (UnimplementedDatanodeServiceServer) Ping(context.Context, *PingRequest) (*
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")}
 func (UnimplementedDatanodeServiceServer) Snapshot(context.Context, *SnapshotRequest) (*SnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Snapshot not implemented")}
+func (UnimplementedDatanodeServiceServer) Shutdown(context.Context, *PingRequest) (*PingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Shutdown not implemented")}
 func (UnimplementedDatanodeServiceServer) mustEmbedUnimplementedDatanodeServiceServer() {}
 func (UnimplementedDatanodeServiceServer) testEmbeddedByValue()                         {}
 
@@ -558,6 +573,24 @@ func _DatanodeService_Snapshot_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DatanodeService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DatanodeServiceServer).Shutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DatanodeService_Shutdown_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DatanodeServiceServer).Shutdown(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 
 var DatanodeService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "distrieats.DatanodeService",
@@ -572,7 +605,9 @@ var DatanodeService_ServiceDesc = grpc.ServiceDesc{
 		{MethodName: "Ping",
 			Handler:    _DatanodeService_Ping_Handler,},
 		{MethodName: "Snapshot",
-			Handler:    _DatanodeService_Snapshot_Handler,},},
+			Handler:    _DatanodeService_Snapshot_Handler,},
+		{MethodName: "Shutdown",
+			Handler:    _DatanodeService_Shutdown_Handler,},},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/distrieats.proto",
 }

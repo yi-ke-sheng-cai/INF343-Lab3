@@ -50,9 +50,14 @@ func main() {
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-		if err := b.GenerarReporte(); err != nil {
-			b.log.Printf("error generando Reporte.txt en cierre: %v", err)
+
+		select {
+		case <-b.stop:
+			b.log.Printf("Shutdown completo, deteniendo servidor...")
+		case <-sig:
+			if err := b.GenerarReporte(); err != nil {
+				b.log.Printf("error generando Reporte.txt en cierre: %v", err)
+			}
 		}
 		srv.GracefulStop()
 		os.Exit(0)
