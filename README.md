@@ -6,7 +6,7 @@ Simulación de un sistema de delivery distribuido con **consistencia eventual** 
 
 | Nombre | Rol |
 |---|---|
-| Andreu Lechuga | 202073 |
+| Andreu Lechuga | 202073595-6 |
 | Jeremy Zavala | 202044535-4 |
 | Camila Rosales| 202173631-k |
 
