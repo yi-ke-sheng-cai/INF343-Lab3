@@ -1,6 +1,3 @@
-# docker-compose de DESARROLLO LOCAL: los 9 contenedores en una red bridge,
-# resolviéndose por nombre de servicio. Para la evaluación en 4 VMs usar los
-# docker-compose-vm{1..4}.yml. Salidas (Reporte.txt, estado_final_*) en ./resultados.
 services:
   dn1:
     build: { context: ., args: { ENTIDAD: datanode } }

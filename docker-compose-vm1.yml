@@ -1,5 +1,3 @@
-# MV1: Broker Central + Productor de Eventos. network_mode host (4 VMs reales).
-# Las IPs de las otras VMs vienen de .env (IP_MV2..IP_MV4).
 services:
   broker:
     build: { context: ., args: { ENTIDAD: broker } }

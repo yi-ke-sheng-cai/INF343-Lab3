@@ -1,42 +1,24 @@
 syntax = "proto3";
 
-// Paquete Protocol Buffers del sistema DistriEats (Laboratorio 3, SD USM 2026-1).
-// Define TODOS los mensajes y servicios gRPC que viajan entre las entidades:
-// Cliente, Gateway, Broker, Productor y Datanodes.
 package distrieats;
 
-// go_package: dónde y con qué nombre se genera el código Go (paquete pb).
 option go_package = "distrieats/proto/pb;pb";
 
-// ----------------------------------------------------------------------------
-// Reloj vectorial
-// ----------------------------------------------------------------------------
-
-// VectorClock: una entrada por Datanode. clave = node_id ("DN1", "DN2", "DN3").
 message VectorClock {
   map<string, int64> entries = 1;
 }
 
-// ----------------------------------------------------------------------------
-// Pedido (unidad de estado replicada)
-// ----------------------------------------------------------------------------
-
-// Order: representa un pedido y su estado causal (vector clock adjunto).
 message Order {
-  string order_id = 1;    // "Ped-S-001", "Ped-C1-001", ...
-  string client_id = 2;   // cliente que lo originó (vacío si viene del productor)
-  string restaurant = 3;  // BurgerNode, DockerPizza, SushiStream, GopherTacos
-  string status = 4;      // Recibido, Preparando, En Camino, Entregado, Cancelado
-  VectorClock clock = 5;  // reloj vectorial del emisor
-  int64 timestamp = 6;    // instante de la última modificación (UnixNano)
+  string order_id = 1;
+  string client_id = 2;
+  string restaurant = 3;
+  string status = 4;
+  VectorClock clock = 5;
+  int64 timestamp = 6;
 }
 
-// ----------------------------------------------------------------------------
-// Cliente -> Gateway
-// ----------------------------------------------------------------------------
-
 message CrearPedidoRequest {
-  string request_id = 1;         // idempotencia (generador propio)
+  string request_id = 1;
   string client_id = 2;
   string order_id = 3;
   string restaurant = 4;
@@ -46,7 +28,7 @@ message CrearPedidoResponse {
   bool success = 1;
   string message = 2;
   Order order = 3;
-  string datanode_id = 4;        // Datanode que procesó (para el mensaje RYW)
+  string datanode_id = 4;
 }
 message ConsultarEstadoRequest {
   string client_id = 1;
@@ -55,23 +37,19 @@ message ConsultarEstadoRequest {
 message ConsultarEstadoResponse {
   bool found = 1;
   Order order = 2;
-  string datanode_id = 3;        // Datanode consultado (afinidad o round robin)
-  bool from_affinity = 4;        // true si se resolvió por afinidad de sesión
+  string datanode_id = 3;
+  bool from_affinity = 4;
 }
-
-// ----------------------------------------------------------------------------
-// Gateway/Broker -> Datanode
-// ----------------------------------------------------------------------------
 
 message UpdateOrderRequest {
-  Order order = 1;               // incluye vector clock del emisor
-  string request_id = 2;         // idempotencia extremo a extremo
+  Order order = 1;
+  string request_id = 2;
 }
 message UpdateOrderResponse {
-  bool applied = 1;              // true si el estado entrante se aplicó
-  Order resulting_order = 2;     // estado final tras merge/resolución
-  string datanode_id = 3;        // Datanode que respondió
-  string message = 4;            // detalle (p. ej. error de negocio)
+  bool applied = 1;
+  Order resulting_order = 2;
+  string datanode_id = 3;
+  string message = 4;
 }
 message GetOrderRequest {
   string order_id = 1;
@@ -82,23 +60,15 @@ message GetOrderResponse {
   string datanode_id = 3;
 }
 
-// ----------------------------------------------------------------------------
-// Gossip entre Datanodes
-// ----------------------------------------------------------------------------
-
 message GossipSyncRequest {
-  repeated Order orders = 1;     // snapshot local del emisor
+  repeated Order orders = 1;
   VectorClock sender_clock = 2;
   string sender_id = 3;
 }
 message GossipSyncResponse {
-  repeated Order orders = 1;     // estado del receptor para fusionar de vuelta
+  repeated Order orders = 1;
   string receiver_id = 2;
 }
-
-// ----------------------------------------------------------------------------
-// Salud / snapshot de auditoría
-// ----------------------------------------------------------------------------
 
 message PingRequest {}
 message PingResponse {
@@ -108,13 +78,9 @@ message PingResponse {
 
 message SnapshotRequest {}
 message SnapshotResponse {
-  repeated Order orders = 1;     // estado completo del Datanode (para Reporte.txt)
+  repeated Order orders = 1;
   string node_id = 2;
 }
-
-// ----------------------------------------------------------------------------
-// Auditoría RYW (Gateway -> Broker, para el Reporte.txt)
-// ----------------------------------------------------------------------------
 
 message RYWEntry {
   string client_id = 1;
@@ -126,20 +92,12 @@ message AuditoriaRYWResponse {
   repeated RYWEntry entries = 1;
 }
 
-// ----------------------------------------------------------------------------
-// Fin de eventos (Productor -> Broker, dispara la Fase 5 / Reporte.txt)
-// ----------------------------------------------------------------------------
-
 message FinEventosRequest {
-  int32 total_eventos = 1;       // cuántas líneas emitió el productor
+  int32 total_eventos = 1;
 }
 message FinEventosResponse {
   bool ok = 1;
 }
-
-// ----------------------------------------------------------------------------
-// Servicios
-// ----------------------------------------------------------------------------
 
 service GatewayService {
   rpc CrearPedido(CrearPedidoRequest) returns (CrearPedidoResponse);

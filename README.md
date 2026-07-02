@@ -51,9 +51,8 @@ Contrato gRPC único: `proto/distrieats.proto` (generado en `proto/pb/`).
 ### Local (una máquina, red bridge Docker) — recomendado para probar
 
 ```bash
-make up          # construye y levanta los 9 contenedores
-# ... observar logs; al terminar el CSV se genera resultados/Reporte.txt ...
-make down        # detener (los Datanodes vuelcan estado_final_*.log al recibir SIGTERM)
+make up
+make down
 ```
 
 Las salidas quedan en `resultados/`: `Reporte.txt` y `estado_final_DN{1,2,3}.log`.
@@ -65,10 +64,10 @@ Las salidas quedan en `resultados/`: `Reporte.txt` y `estado_final_DN{1,2,3}.log
 2. En cada VM ejecutar su target (copiando el repo a las 4):
 
 ```bash
-make docker-VM1   # en MV1: Broker + Productor
-make docker-VM2   # en MV2: Gateway + Cliente 1 + Datanode 1
-make docker-VM3   # en MV3: Cliente 2 + Datanode 2
-make docker-VM4   # en MV4: Cliente 3 + Datanode 3
+make docker-VM1
+make docker-VM2
+make docker-VM3
+make docker-VM4
 ```
 
 Orden sugerido de arranque: **VM2, VM3, VM4 (Datanodes) → VM1 (Broker/Productor)**.
@@ -158,7 +157,6 @@ bin/datanode -id DN1 -puerto 50061 -peers DN2@host:50062,DN3@host:50063 \
 ### Verificar convergencia
 
 ```bash
-# Los 3 archivos deben ser idénticos (salvo la cabecera con el ID del nodo):
 for n in 1 2 3; do grep '^Pedido' resultados/estado_final_DN$n.log | sort > /tmp/c$n; done
 diff /tmp/c1 /tmp/c2 && diff /tmp/c2 /tmp/c3 && echo "CONVERGENCIA OK"
 ```

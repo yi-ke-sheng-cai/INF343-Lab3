@@ -1,4 +1,3 @@
-# MV2: Gateway de Pedidos + Cliente Hambriento 1 + Datanode 1. network_mode host.
 services:
   dn1:
     build: { context: ., args: { ENTIDAD: datanode } }

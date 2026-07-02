@@ -26,7 +26,8 @@ func (r Relation) String() string {
 		return "Dominado"
 	default:
 		return "Concurrente"
-	}}
+	}
+}
 
 func New(nodeIDs []string) *pb.VectorClock {
 	entries := make(map[string]int64, len(nodeIDs))
@@ -74,10 +75,10 @@ func Compare(a, b *pb.VectorClock) Relation {
 	for k := range keys {
 		if ea[k] > eb[k] {
 			aGreater = true
-		} 
-		else if ea[k] < eb[k] {
+		} else if ea[k] < eb[k] {
 			bGreater = true
-		}}
+		}
+	}
 
 	switch {
 	case !aGreater && !bGreater:
@@ -88,7 +89,8 @@ func Compare(a, b *pb.VectorClock) Relation {
 		return Dominated
 	default:
 		return Concurrent
-	}}
+	}
+}
 
 
 func Merge(a, b *pb.VectorClock) *pb.VectorClock {

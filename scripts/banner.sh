@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Banner de arranque de DistriEats.
-#
-# Se imprime DESPUES de construir las imagenes Docker y ANTES de levantar los
-# contenedores (antes de que empiecen los logs). Explica, de forma visual, el
-# comportamiento esperado del sistema, como se conectan las partes y la leyenda
-# de prefijos/eventos que usaran los logs a continuacion.
-#
-# Respeta NO_COLOR (https://no-color.org): si esta definido, no emite ANSI.
 
 if [ -n "$NO_COLOR" ]; then
   B= D= R= RED= GRN= YEL= BLU= MAG= CYA=

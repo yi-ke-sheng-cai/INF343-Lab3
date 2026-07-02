@@ -2,9 +2,6 @@
 
 .DEFAULT_GOAL := help
 
-# DistriEats — Laboratorio 3 (Sistemas Distribuidos, USM 2026-1).
-# Go + gRPC + Protocol Buffers + Docker. Config vía .env / flags (nada hardcodeado).
-
 help:
 	@echo "DistriEats - targets:"
 	@echo "  make proto         regenerar codigo gRPC desde proto/distrieats.proto"
@@ -20,13 +17,11 @@ help:
 	@echo "  make docker-VM4    MV4: Cliente 3 + Datanode 3"
 	@echo "  make clean         borrar bin/ y resultados/"
 
-# Regenerar gRPC (solo si se toca el .proto).
 proto:
 	protoc --go_out=. --go_opt=module=distrieats \
 	       --go-grpc_out=. --go-grpc_opt=module=distrieats \
 	       proto/distrieats.proto
 
-# Compilar los 5 binarios (útil para desarrollo sin Docker).
 build:
 	@mkdir -p bin
 	go build -o bin/datanode ./cmd/datanode
@@ -38,7 +33,6 @@ build:
 test:
 	go test ./...
 
-# --- Local (una máquina, red bridge) ---
 docker-build:
 	docker compose build
 
@@ -54,7 +48,6 @@ down:
 logs:
 	docker compose logs -f
 
-# --- Evaluación en 4 VMs (network_mode host, IPs desde .env) ---
 docker-VM1:
 	@mkdir -p resultados
 	docker compose -f docker-compose-vm1.yml build

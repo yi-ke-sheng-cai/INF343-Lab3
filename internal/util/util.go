@@ -63,10 +63,10 @@ func ParsePeers(s string) []Peer {
 	for i, it := range items {
 		if idx := strings.Index(it, "@"); idx > 0 {
 			out = append(out, Peer{ID: it[:idx], Addr: it[idx+1:]})
-		} 
-		else {
+		} else {
 			out = append(out, Peer{ID: fmt.Sprintf("DN%d", i+1), Addr: it})
-		}}
+		}
+	}
 	return out
 }
 
